@@ -7,12 +7,12 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Data
-@Entity
+@Table
 public class Product {
-    @Id
+    @Column
     private String productId;
-
+    @Column
     private String productName;
-
+    @Column
     private int amount;
 }
