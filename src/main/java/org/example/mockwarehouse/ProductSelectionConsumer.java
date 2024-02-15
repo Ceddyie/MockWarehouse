@@ -55,9 +55,15 @@ public class ProductSelectionConsumer {
         namedParameters.addValue("productId", productId);
         namedParameters.addValue("amount", amount);
         try {
-            String storageLocation = jdbcTemplate.queryForObject("SELECT storage_location FROM storage_assignment WHERE amount = :amount AND product_id = :productId", namedParameters, String.class);
-            System.out.println(storageLocation);
-            kafkaProducerService.sendProductLocation(productId, amount, storageLocation);
+            if (!productId.isEmpty() || amount != 0) {
+                String storageLocation = jdbcTemplate.queryForObject("SELECT storage_location FROM storage_assignment WHERE amount = :amount AND product_id = :productId", namedParameters, String.class);
+                System.out.println(storageLocation);
+                kafkaProducerService.sendProductLocation(productId, amount, storageLocation);
+            }
+            else {
+                kafkaProducerService.sendError();
+            }
+
         } catch (IncorrectResultSizeDataAccessException e) {
             System.out.println(e.getMessage());
             kafkaProducerService.sendError();
