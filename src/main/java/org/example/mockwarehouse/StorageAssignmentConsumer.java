@@ -22,6 +22,9 @@ public class StorageAssignmentConsumer {
     @Autowired
     private NamedParameterJdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private KafkaProducerService kafkaProducerService;
+
     @KafkaListener(topics = "storage_assignment_1")
     public void listen(String message) throws JsonMappingException, JsonProcessingException {
         AssignmentRequest request = objectMapper.readValue(message, AssignmentRequest.class);
@@ -35,9 +38,32 @@ public class StorageAssignmentConsumer {
 
     private void processAssignment(String productId, int amount) {
         if (!checkForProduct(productId)) {
-            System.out.println("Nicht vorhanden");
+            System.out.println("Nothing found!");
+
+            MapSqlParameterSource namedParameters = new MapSqlParameterSource();
+            namedParameters.addValue("productId", productId);
+            namedParameters.addValue("amount", amount);
+
+            jdbcTemplate.update("INSERT INTO storage_assignment(product_id, amount) VALUES (:productId, :amount)", namedParameters);
+
+            int storageLocation = jdbcTemplate.queryForObject("SELECT storage_location FROM storage_assignment WHERE product_id = :productId", namedParameters, Integer.class);
+
+            kafkaProducerService.sendSuccessfullyAssigned(productId, storageLocation);
         } else {
-            System.out.println("vorhanden");
+            System.out.println("Product found");
+
+            MapSqlParameterSource namedParameters = new MapSqlParameterSource();
+            namedParameters.addValue("productId", productId);
+
+            int oldAmount = jdbcTemplate.queryForObject("SELECT amount FROM storage_assignment WHERE product_id = :productId", namedParameters, Integer.class);
+
+            amount += oldAmount;
+            namedParameters.addValue("amount", amount);
+
+            jdbcTemplate.update("UPDATE storage_assignment SET amount = :amount WHERE product_id = :productId", namedParameters);
+            int storageLocation = jdbcTemplate.queryForObject("SELECT storage_location FROM storage_assignment WHERE product_id = :productId", namedParameters, Integer.class);
+
+            kafkaProducerService.sendUpdated(productId, storageLocation, amount);
         }
     }
 

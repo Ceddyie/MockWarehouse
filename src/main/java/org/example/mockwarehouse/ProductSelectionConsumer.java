@@ -50,7 +50,7 @@ public class ProductSelectionConsumer {
         namedParameters.addValue("amount", amount);
         try {
             if (!productId.isEmpty() || amount != 0) {
-                String storageLocation = jdbcTemplate.queryForObject("SELECT storage_location FROM storage_assignment WHERE amount = :amount AND product_id = :productId", namedParameters, String.class);
+                int storageLocation = jdbcTemplate.queryForObject("SELECT storage_location FROM storage_assignment WHERE amount = :amount AND product_id = :productId", namedParameters, Integer.class);
                 System.out.println(storageLocation);
                 kafkaProducerService.sendProductLocation(productId, amount, storageLocation);
             }
