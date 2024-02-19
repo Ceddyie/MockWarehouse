@@ -47,12 +47,26 @@ public class ProductSelectionConsumer {
     private void checkDatabase(String productId, int amount) {
         MapSqlParameterSource namedParameters = new MapSqlParameterSource();
         namedParameters.addValue("productId", productId);
-        namedParameters.addValue("amount", amount);
         try {
-            if (!productId.isEmpty() || amount != 0) {
-                int storageLocation = jdbcTemplate.queryForObject("SELECT storage_location FROM storage_assignment WHERE amount = :amount AND product_id = :productId", namedParameters, Integer.class);
+            if (!productId.isEmpty() || amount > 0) {
+                int storageLocation = jdbcTemplate.queryForObject("SELECT storage_location FROM storage_assignment WHERE product_id = :productId", namedParameters, Integer.class);
                 System.out.println(storageLocation);
-                kafkaProducerService.sendProductLocation(productId, amount, storageLocation);
+                namedParameters.addValue("storageLocation", storageLocation);
+                int oldAmount = jdbcTemplate.queryForObject("SELECT amount FROM storage_assignment WHERE product_id = :productId AND storage_location = :storageLocation", namedParameters, Integer.class);
+                if (amount > oldAmount) {
+                    kafkaProducerService.sendAmountError();
+                } else {
+                    int newAmount = oldAmount - amount;
+                    if (newAmount == 0) {
+                        jdbcTemplate.update("DELETE FROM storage_assignment WHERE product_id = :productId", namedParameters);
+                        kafkaProducerService.sendLastItem(productId);
+                    } else {
+                        namedParameters.addValue("amount", newAmount);
+                        jdbcTemplate.update("UPDATE storage_assignment SET amount = :amount WHERE storage_location = :storageLocation and product_id = :productId", namedParameters);
+                        kafkaProducerService.sendProductLocation(productId, newAmount, storageLocation);
+                    }
+
+                }
             }
             else {
                 kafkaProducerService.sendError();
