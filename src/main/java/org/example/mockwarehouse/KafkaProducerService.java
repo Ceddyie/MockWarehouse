@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 public class KafkaProducerService {
     private static final String PRODUCT_SELECTION_TOPIC = "product_selection_2";
     private static final String STORAGE_ASSIGNMENT_TOPIC = "storage_assignment_2";
+    private static final String UPDATE_PRODUCT_STATUS = "update_product_status";
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -30,12 +31,15 @@ public class KafkaProducerService {
 
     public void sendLastItem(String productId) {
         String message = "Warning: Last item picked, product with ID: " + productId + " removed from storage!";
+        String update = productId + ":false";
+        kafkaTemplate.send(UPDATE_PRODUCT_STATUS, update);
         kafkaTemplate.send(PRODUCT_SELECTION_TOPIC, message);
     }
 
     ///////////////// STORAGE ASSIGNMENT //////////////////
     public void sendSuccessfullyAssigned(String productId, int storageLocation) {
         String message = "Assigned product " + productId + " to " + storageLocation;
+        String update = productId + ":true";
         kafkaTemplate.send(STORAGE_ASSIGNMENT_TOPIC, message);
     }
 
