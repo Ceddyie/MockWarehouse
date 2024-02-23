@@ -1,4 +1,4 @@
-package org.example.mockwarehouse;
+package org.example.mockwarehouse.requests;
 
 import lombok.Data;
 
